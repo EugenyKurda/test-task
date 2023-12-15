@@ -11,6 +11,8 @@
 </template>
 
 <script>
+import { mapActions, mapGetters } from 'vuex';
+
 export default {
   name: 'AppTimer',
   data() {
@@ -19,13 +21,21 @@ export default {
       timeLeft: 15,
     };
   },
+  computed: {
+    ...mapGetters(['getExchangeRate']),
+    exchangeRate() {
+      return this.getExchangeRate;
+    },
+  },
   methods: {
+    ...mapActions(['loadData', 'setManualExchangeRate']),
     startTimer() {
       const timerInterval = setInterval(() => {
         if (this.timeLeft > 0) {
           this.timeLeft -= 1;
         } else {
-          this.$store.dispatch('loadData');
+          this.setManualExchangeRate(this.exchangeRate);
+          this.loadData();
           this.resetTimer();
         }
       }, 1000);

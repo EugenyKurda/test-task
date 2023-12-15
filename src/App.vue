@@ -14,7 +14,12 @@
           class="exchange-rate__input"
           v-model="manualExchangeRate"
         ></v-text-field>
-        <v-btn @click="setManualExchangeRate" class="exchange-rate__btn">Применить</v-btn>
+        <v-btn
+          @click="setManualExchangeRate(manualExchangeRate)"
+          class="exchange-rate__btn"
+        >
+          Применить
+        </v-btn>
       </div>
       <div class="app-header__timer">
         <app-timer/>
@@ -24,33 +29,38 @@
       <div class="app-product__block">
         <v-expansion-panels accordion class="app-list__goods" focusable>
           <v-expansion-panel
-            v-for="(category, index) in categories"
+            v-for="(category, index) in goods"
             :key="index"
             class="app-list__item"
           >
             <v-expansion-panel-header
               class="app-list__item-header"
             >
-              {{ category.G }}
+              {{ category.categoryName }}
             </v-expansion-panel-header>
-            <v-expansion-panel-content>
+            <v-expansion-panel-content class="app-list__item-content">
               <div
-                v-for="good in category.B"
-                :key="good.id"
+                v-for="(product, index) in category.goods"
+                :key="product.T"
               >
                 <div
                   class="app-good__item"
                 >
-                  <p class="app-good__item-title">{{ good.N + ' (' + good.T + ')'}}</p>
+                  <p class="app-good__item-title">{{ product.Name + ' (' + product.P + ')'}}</p>
                   <div>
-                    <span class="app-good__item-price">{{ 2000 + ' руб' }}</span>
+                    <span
+                      class="app-good__item-price"
+                      :style="{color: product.textColor}"
+                    >
+                      {{ product.C + ' руб' }}
+                    </span>
                     <v-btn
                       elevation="2"
-                      @click="addToCart(good)"
+                      @click="addToCart(product)"
                     >Купить</v-btn>
                   </div>
                 </div>
-                <v-divider/>
+                <v-divider v-if="index < category.goods.length - 1" />
               </div>
             </v-expansion-panel-content>
           </v-expansion-panel>
@@ -99,42 +109,23 @@ export default {
   components: { AppTimer },
   data() {
     return {
-      manualExchangeRate: '',
+      manualExchangeRate: 20,
     };
   },
   computed: {
-    ...mapGetters(['getGoods', 'getCart', 'getExchangeRate', 'getPrevExchangeRate', 'getCategory']),
+    ...mapGetters(['getGoods', 'getCart']),
     goods() {
       return this.getGoods;
-    },
-    categories() {
-      return this.getCategory;
     },
     cart() {
       return this.getCart;
     },
-    formatTotalPrice() {
-      const totalPrice = this.getCart.reduce((total, item) => total + Number(item.priceRub), 0)
-        .toFixed(2);
-      return totalPrice.replace(/^0+/, ''); // Remove leading zeros
-    },
   },
   methods: {
-    ...mapActions(['addToCart', 'removeFromCart', 'loadData', 'updateExchangeRate']),
-    setManualExchangeRate() {
-      const rate = parseFloat(this.manualExchangeRate);
-      if (!Number.isNaN(rate) && rate >= 20 && rate <= 80) {
-        this.$store.commit('setExchangeRate', rate);
-        this.manualExchangeRate = ''; // Clear the input field after applying the rate
-      } else {
-        alert('Пожалуйста, введите курс в пределах от 20 до 80.');
-      }
-    },
+    ...mapActions(['addToCart', 'setManualExchangeRate', 'removeFromCart', 'loadData']),
   },
   mounted() {
     this.loadData();
-    console.log(this.cart);
-    setInterval(() => this.updateExchangeRate(), 15000);
   },
 };
 </script>
@@ -150,7 +141,7 @@ export default {
     height: 60px;
     background-color: white;
     width: 80%;
-    margin: 0 auto 20px auto;
+    margin: 20px auto 20px auto;
     display: flex;
     justify-content: space-between;
 
@@ -189,7 +180,6 @@ export default {
     width: 90%;
     margin: 0 auto;
     display: flex;
-    align-items: stretch;
     justify-content: space-between;
 
     .app-product__block {
@@ -212,6 +202,10 @@ export default {
             align-items: center;
           }
 
+          &-content .v-expansion-panel-content__wrap {
+            padding: 0 24px 0;
+          }
+
           .app-good__item {
             padding: 10px 0 10px 0;
             display: flex;
@@ -229,6 +223,14 @@ export default {
             &-price {
               margin-right: 15px;
             }
+
+            .price-increased {
+              color: red;
+            }
+
+            .price-decreased {
+              color: green;
+            }
           }
         }
       }
@@ -240,14 +242,11 @@ export default {
       border: 1px solid rgba(187, 189, 194, 0.23);
       display: flex;
       flex-direction: column;
-      justify-content: flex-end;
-      max-height: 400px;
-      min-height: 0;
-      height: 100%;
+      justify-content: space-between;
+      height: fit-content;
+      max-height: 500px;
 
       .app-cart__items-wrapper {
-        max-height: 80%;
-        height: 100%;
         overflow: auto;
         overflow-x: hidden;
       }
