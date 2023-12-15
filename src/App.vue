@@ -9,13 +9,16 @@
           type="number"
           prefix="$"
           placeholder="Введите курс доллара"
-          :hide-details="true"
+          :rules="[validExchangeRate || 'Курс доллара должен быть от 20 до 80 включительно.']"
           style="max-width: 200px"
           class="exchange-rate__input"
+          :hide-details="validExchangeRate"
           v-model="manualExchangeRate"
+          @input="exchangeRateRule($event)"
         ></v-text-field>
         <v-btn
           @click="setManualExchangeRate(manualExchangeRate)"
+          :disabled="!validExchangeRate"
           class="exchange-rate__btn"
         >
           Применить
@@ -46,7 +49,7 @@
                 <div
                   class="app-good__item"
                 >
-                  <p class="app-good__item-title">{{ product.Name + ' (' + product.P + ')'}}</p>
+                  <p class="app-good__item-title">{{ product.Name + ' (' + product.P + ')' }}</p>
                   <div>
                     <span
                       class="app-good__item-price"
@@ -56,11 +59,16 @@
                     </span>
                     <v-btn
                       elevation="2"
-                      @click="addToCart(product)"
-                    >Купить</v-btn>
+                      @click="addToCart({
+                      product,
+                      categoryId: category.categoryId,
+                      categoryName: category.categoryName,
+                      })"
+                    >Купить
+                    </v-btn>
                   </div>
                 </div>
-                <v-divider v-if="index < category.goods.length - 1" />
+                <v-divider v-if="index < category.goods.length - 1"/>
               </div>
             </v-expansion-panel-content>
           </v-expansion-panel>
@@ -82,14 +90,19 @@
                   outlined
                   class="app-cart__item-chip"
                 >
-                  {{ 'Категория' }}
+                  {{ cartItem.categoryName }}
                 </v-chip>
                 <p>
-                  {{ cartItem.Name }}
+                  {{ cartItem.Name + ' (' + cartItem.P + ')' }}
                 </p>
               </div>
               <div>
-                <span class="app-cart__item-price">{{ cartItem.C + ' руб' }}</span>
+                <span
+                  class="app-cart__item-price"
+                  :style="{color: cartItem.textColor}"
+                >
+                  {{ cartItem.C + ' руб' }}
+                </span>
                 <v-btn @click="removeFromCart(index)">Удалить</v-btn>
               </div>
             </div>
@@ -110,6 +123,7 @@ export default {
   data() {
     return {
       manualExchangeRate: 20,
+      validExchangeRate: true,
     };
   },
   computed: {
@@ -128,6 +142,10 @@ export default {
     ...mapActions(['addToCart', 'setManualExchangeRate', 'removeFromCart', 'loadData']),
     generateUniqueKey(item, index) {
       return `${index}_${item.Name}`;
+    },
+    exchangeRateRule(value) {
+      const rate = parseFloat(value);
+      this.validExchangeRate = !Number.isNaN(rate) && rate >= 20 && rate <= 80;
     },
   },
   mounted() {

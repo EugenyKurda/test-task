@@ -4,6 +4,29 @@ import axios from 'axios';
 
 Vue.use(Vuex);
 
+// Функция для вычисления общей суммы с учетом измененного курса
+const calculateTotalPrice = (cart, exchangeRate, previousRate) => {
+  let totalPrice = 0;
+
+  cart.forEach((item) => {
+    totalPrice += Number(item.C) * item.P;
+  });
+
+  totalPrice = Number(totalPrice.toFixed(2));
+
+  // Пересчитываем сумму с учетом измененного курса
+  const exchangeRateDiff = previousRate ? exchangeRate / previousRate : 1;
+
+  return (totalPrice * exchangeRateDiff).toFixed(2);
+};
+
+// Функция для вычисления цвета цены с учетом измененного курса
+const calculateTextColor = (previousRate, exchangeRate) => {
+  if (previousRate === null || previousRate === exchangeRate) return 'black';
+  if (exchangeRate > previousRate) return 'red';
+  return 'green';
+};
+
 export default new Vuex.Store({
   state: {
     goods: [],
@@ -24,27 +47,55 @@ export default new Vuex.Store({
     setGoods: (state, goods) => {
       state.goods = goods;
     },
-    addToCart: (state, item) => {
-      state.cart.push(item);
-    },
     removeFromCart: (state, index) => {
       state.cart.splice(index, 1);
     },
     setManualExchangeRate(state, newRate) {
       state.exchangeRate = newRate;
     },
+    updateCart: (state, updatedCart) => {
+      state.cart = updatedCart;
+    },
     setTotalPrice(state) {
-      state.totalPrice = 0;
-      state.cart.forEach((item) => {
-        state.totalPrice += Number(item.C);
-      });
-      state.totalPrice = Number(state.totalPrice.toFixed(3));
+      // Вычисляем общую сумму с учетом измененного курса
+      state.totalPrice = calculateTotalPrice(state.cart, state.exchangeRate, state.previousRate);
     },
     setPreviousRate(state, rate) {
       state.previousRate = rate;
     },
     updateProductQuantity(state, { categoryIndex, productIndex, quantity }) {
       state.goods[categoryIndex].goods[productIndex].P -= quantity;
+    },
+    addToCart(state, item) {
+      const existingItem = state.cart.find((cartItem) => cartItem.T === item.T);
+
+      const { categoryId, T: productId } = item;
+      const categoryIndex = state.goods.findIndex((category) => category.categoryId === categoryId);
+
+      if (categoryIndex !== -1) {
+        const productIndex = state.goods[categoryIndex].goods.findIndex(
+          (product) => product.T === productId,
+        );
+
+        if (productIndex !== -1 && state.goods[categoryIndex].goods[productIndex].P > 0) {
+          if (existingItem) {
+            existingItem.P += 1;
+          } else {
+            const newItem = { ...item, P: 1 };
+            state.cart.push(newItem);
+          }
+
+          state.goods[categoryIndex].goods[productIndex].P -= 1;
+
+          // Обновляем цену товара в корзине с учетом изменения курса
+          const exchangeRateDiff = state.previousRate ? state.exchangeRate / state.previousRate : 1;
+
+          const cartItem = state.cart.find((cart) => cart.T === item.T);
+          if (cartItem) {
+            cartItem.C = (item.C / exchangeRateDiff).toFixed(2);
+          }
+        }
+      }
     },
   },
   actions: {
@@ -65,6 +116,9 @@ export default new Vuex.Store({
         };
 
         const { exchangeRate, previousRate } = context.state;
+        const { cart } = context.state;
+
+        const textColor = calculateTextColor(previousRate, exchangeRate);
 
         goods.forEach((item) => {
           const categoryId = item.G;
@@ -83,29 +137,49 @@ export default new Vuex.Store({
               };
             }
 
-            let textColor = 'black';
-            if (previousRate === null || previousRate === exchangeRate) {
-              textColor = 'black';
-            } else if (exchangeRate > previousRate) {
-              textColor = 'red';
-            } else if (exchangeRate <= previousRate) {
-              textColor = 'green';
-            }
-
             mappedData[categoryId].goods.push({
-              C: convertedPrice, // Цена в рублях
-              T: productId, // ID товара
-              P: item.P, // Количество товара
-              Name: productName, // Название товара
-              textColor, // Передаем цвет текста
+              C: convertedPrice,
+              T: productId,
+              P: item.P,
+              Name: productName,
+              textColor,
             });
           }
         });
 
         const mappedDataArray = Object.values(mappedData);
+        const updatedGoods = mappedDataArray.map((category) => {
+          if (category.goods.length) {
+            return {
+              ...category,
+              goods: category.goods.map((product) => {
+                const cartItem = cart.find((item) => item.T === product.T);
+                if (cartItem) {
+                  return {
+                    ...product,
+                    P: product.P - cartItem.P,
+                  };
+                }
+                return product;
+              }),
+            };
+          }
+          return category;
+        });
 
-        context.commit('setGoods', mappedDataArray);
+        context.commit('setGoods', updatedGoods);
         context.commit('setPreviousRate', exchangeRate);
+
+        // Обновляем корзину с учетом изменения курса
+        const updatedCart = context.state.cart.map((item) => ({
+          ...item,
+          textColor,
+          C: Number(((item.C / previousRate) * exchangeRate).toFixed(2)),
+        }));
+
+        context.commit('updateCart', updatedCart);
+        // Обновляем общую сумму товаров в корзине
+        context.commit('setTotalPrice');
       } catch (error) {
         console.error('Не удалось загрузить данные', error);
       }
@@ -113,8 +187,14 @@ export default new Vuex.Store({
     setManualExchangeRate({ commit }, newRate) {
       commit('setManualExchangeRate', newRate);
     },
-    addToCart: ({ commit }, item) => {
-      commit('addToCart', item);
+    addToCart({ commit }, item) {
+      const newItem = {
+        ...item.product,
+        categoryId: item.categoryId,
+        categoryName: item.categoryName,
+      };
+
+      commit('addToCart', newItem);
       commit('setTotalPrice');
     },
     removeFromCart: ({ commit }, index) => {
