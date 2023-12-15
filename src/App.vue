@@ -70,7 +70,7 @@
         <div class="app-cart__items-wrapper">
           <div
             v-for="(cartItem, index) in cart"
-            :key="cartItem"
+            :key="generateUniqueKey(cartItem, index + 1)"
           >
             <div
               class="app-cart__item"
@@ -85,17 +85,17 @@
                   {{ 'Категория' }}
                 </v-chip>
                 <p>
-                  {{ cartItem.N }}
+                  {{ cartItem.Name }}
                 </p>
               </div>
               <div>
-                <span class="app-cart__item-price">{{ 2000 + ' руб' }}</span>
+                <span class="app-cart__item-price">{{ cartItem.C + ' руб' }}</span>
                 <v-btn @click="removeFromCart(index)">Удалить</v-btn>
               </div>
             </div>
           </div>
         </div>
-        <h2 class="app-total__price">Total: {{ 3000 }}</h2>
+        <h2 class="app-total__price">Total: {{ totalPrice }}</h2>
       </div>
     </div>
   </div>
@@ -113,16 +113,22 @@ export default {
     };
   },
   computed: {
-    ...mapGetters(['getGoods', 'getCart']),
+    ...mapGetters(['getGoods', 'getCart', 'getTotalPrice']),
     goods() {
       return this.getGoods;
     },
     cart() {
       return this.getCart;
     },
+    totalPrice() {
+      return this.getTotalPrice;
+    },
   },
   methods: {
     ...mapActions(['addToCart', 'setManualExchangeRate', 'removeFromCart', 'loadData']),
+    generateUniqueKey(item, index) {
+      return `${index}_${item.Name}`;
+    },
   },
   mounted() {
     this.loadData();
