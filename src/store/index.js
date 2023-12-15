@@ -1,4 +1,3 @@
-// src/store/index.js
 import Vue from 'vue';
 import Vuex from 'vuex';
 import axios from 'axios';
@@ -38,8 +37,6 @@ export default new Vuex.Store({
     },
   },
   actions: {
-    // В вашем компоненте или модуле Vuex
-
     loadData: async (context) => {
       try {
         const [goodsResponse, categoriesResponse] = await Promise.all([
@@ -75,14 +72,13 @@ export default new Vuex.Store({
               };
             }
 
-            // Устанавливаем цвет текста
             let textColor = 'black';
             if (previousRate === null) {
-              textColor = 'black'; // Черный, если previousRate равен null
+              textColor = 'black';
             } else if (exchangeRate > previousRate) {
-              textColor = 'red'; // Красный, если курс увеличился
+              textColor = 'red';
             } else if (exchangeRate <= previousRate) {
-              textColor = 'green'; // Зеленый, если курс уменьшился
+              textColor = 'green';
             }
 
             mappedData[categoryId].goods.push({
@@ -100,7 +96,7 @@ export default new Vuex.Store({
         console.log(mappedDataArray);
 
         context.commit('setGoods', mappedDataArray);
-        context.commit('setPreviousRate', exchangeRate); // Сохраняем текущий курс для следующего обновления
+        context.commit('setPreviousRate', exchangeRate);
       } catch (error) {
         console.error('Не удалось загрузить данные', error);
       }
