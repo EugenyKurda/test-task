@@ -93,8 +93,6 @@ export default new Vuex.Store({
 
         const mappedDataArray = Object.values(mappedData);
 
-        console.log(mappedDataArray);
-
         context.commit('setGoods', mappedDataArray);
         context.commit('setPreviousRate', exchangeRate);
       } catch (error) {
